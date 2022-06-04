@@ -1,5 +1,5 @@
 """Module with image manipulation operations."""
-from typing import Iterator, Literal, NamedTuple
+from typing import Iterable, Iterator, Literal, NamedTuple
 
 from PIL import Image, ImageDraw
 
@@ -47,15 +47,13 @@ def get_squares_with_pixels(
                 yield Position(x, y)
 
 
-def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
-    """Draw 50x50 squares wherever there are pixels in the original image."""
-    result = image.copy()
-
-    drawer = ImageDraw.Draw(result)
-
-    square_size = 50
-
-    squares = list(get_squares_with_pixels(image, square_size))
+def draw_squares_on_image(
+    image: Image.Image,
+    squares: Iterable[Position],
+    square_size: int,
+) -> None:
+    """Draw a given collection of squares on an image."""
+    drawer = ImageDraw.Draw(image)
 
     for x, y in squares:
         drawer.rectangle(
@@ -63,5 +61,15 @@ def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
             outline=(0, 0, 0),
             width=1,
         )
+
+
+def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
+    """Draw 50x50 squares wherever there are pixels in the original image."""
+    square_size = 50
+
+    squares = get_squares_with_pixels(image, square_size)
+    result = image.copy()
+
+    draw_squares_on_image(result, squares, square_size)
 
     return result
