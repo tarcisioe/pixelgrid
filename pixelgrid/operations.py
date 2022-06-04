@@ -1,7 +1,15 @@
 """Module with image manipulation operations."""
-from typing import Iterable, Iterator, Literal, NamedTuple
+from dataclasses import dataclass
+from typing import Iterable, Iterator, Literal, NamedTuple, Sequence
 
 from PIL import Image, ImageDraw
+
+
+class Delta(NamedTuple):
+    """Represent a distance between positions."""
+
+    dx: int
+    dy: int
 
 
 class Position(NamedTuple):
@@ -9,6 +17,13 @@ class Position(NamedTuple):
 
     x: int
     y: int
+
+    def translate(self, delta: Delta) -> "Position":
+        """Compute a translated version of this position."""
+        return Position(
+            x=self.x + delta.dx,
+            y=self.y + delta.dy,
+        )
 
 
 def scale10x(image: Image.Image) -> Image.Image:
@@ -63,6 +78,26 @@ def draw_squares_on_image(
         )
 
 
+@dataclass
+class SquareNumber:
+    """The numbering for each square we want to draw."""
+
+    position: Position
+    value: int
+
+
+def compute_square_numbering(
+    squares: Sequence[Position],
+) -> Iterator[SquareNumber]:
+    """Compute where to draw the numbers of a sequence of squares."""
+
+    for number, square_position in enumerate(squares):
+        yield SquareNumber(
+            position=square_position.translate(Delta(2, 2)),
+            value=number,
+        )
+
+
 def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
     """Draw 50x50 squares wherever there are pixels in the original image."""
     square_size = 50
@@ -73,3 +108,20 @@ def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
     draw_squares_on_image(result, squares, square_size)
 
     return result
+
+
+def draw_square_numbering_on_image(
+    image: Image.Image,
+    numbers: Iterable[SquareNumber],
+) -> None:
+    """Draw a given collection of squares on an image."""
+    drawer = ImageDraw.Draw(image)
+
+    for number in numbers:
+        position = number.position
+
+        drawer.rectangle(
+            (position, position.translate(Delta(1, 1))),
+            outline=(0, 0, 0),
+            width=1,
+        )
