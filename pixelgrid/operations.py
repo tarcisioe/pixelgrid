@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Iterable, Iterator, Literal, NamedTuple, Sequence
 
-from PIL import Image, ImageDraw
+from PIL import Image, ImageChops, ImageDraw
 
 
 class Delta(NamedTuple):
@@ -42,13 +42,12 @@ def check_pixels_in_square(
     image: Image.Image, x_origin: int, y_origin: int, square_size: int
 ) -> bool:
     """Check if there are any opaque pixels in a given square."""
-    for y in range(y_origin, y_origin + square_size):
-        for x in range(x_origin, x_origin + square_size):
-            (_, _, _, alpha) = image.getpixel((x, y))
-            if alpha == 255:
-                return True
-
-    return False
+    transparent = Image.new("RGBA", (square_size, square_size), color=(0, 0, 0, 0))
+    square = image.crop(
+        (x_origin, y_origin, x_origin + square_size - 1, y_origin + square_size - 1)
+    )
+    diff = ImageChops.difference(transparent, square)
+    return bool(diff.getbbox())
 
 
 def get_squares_with_pixels(
