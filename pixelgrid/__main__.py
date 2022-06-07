@@ -5,6 +5,7 @@ import typer
 from PIL import Image
 
 from .operations import (
+    NumberFont,
     compute_square_numbering,
     draw_square_numbering_on_image,
     draw_squares_if_pixels,
@@ -16,17 +17,19 @@ APP = typer.Typer()
 
 
 @APP.command()
-def main(image: Path, output: Path = Path("output.png")) -> None:
+def main(image: Path, numbers_path: Path, output: Path = Path("output.png")) -> None:
     """Generate pixel art diagrams."""
 
     with Image.open(image) as im:
+        number_font = NumberFont.from_file(numbers_path)
+
         resized = scale10x(im)
 
         squares = list(get_squares_with_pixels(resized, 50))
         numbers = compute_square_numbering(squares)
 
         with_squares = draw_squares_if_pixels(resized)
-        draw_square_numbering_on_image(with_squares, numbers)
+        draw_square_numbering_on_image(with_squares, numbers, number_font)
         with_squares.save(output)
 
 
