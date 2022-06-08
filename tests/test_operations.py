@@ -31,9 +31,17 @@ def test_scale_10x_scales_10x(datadir: Path) -> None:
     )
 
 
-def test_draw_squares_if_pixels_draws_squares(datadir: Path) -> None:
-    """Test that draw_squares_if_pixels draws squares if it should."""
-    from pixelgrid.operations import draw_squares_if_pixels
+def test_draw_square_layer(datadir: Path) -> None:
+    """Test that it's possible to draw squares with get_square_layer."""
+    from pixelgrid.operations import get_square_layer, get_squares_with_pixels
+
+    def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
+        squares = get_squares_with_pixels(image, 50)
+        square_layer = get_square_layer(image, squares)
+
+        result = image.copy()
+        result.paste(square_layer, mask=square_layer)
+        return result
 
     run_operation_and_compare(
         original_file=datadir / "triangle_10x_expected.png",
@@ -67,18 +75,18 @@ def test_draw_number(datadir: Path) -> None:
 
 
 def test_draw_square_numbering_on_image(datadir: Path) -> None:
-    """Test that draw_square_numbering_on_image draws the numbers correctly."""
+    """Test that it's possible to draw numbers with get_number_layer."""
     from pixelgrid.operations import (
         NumberFont,
         Position,
         SquareNumber,
-        draw_square_numbering_on_image,
+        get_number_layer,
     )
 
     font = NumberFont.from_file(datadir / "numbers-3x5.png")
 
     def draw_numbers_on_squares(image: Image.Image) -> Image.Image:
-        draw_square_numbering_on_image(
+        number_layer = get_number_layer(
             image,
             numbers=[
                 SquareNumber(Position(52, 52), 13),
@@ -87,7 +95,9 @@ def test_draw_square_numbering_on_image(datadir: Path) -> None:
             number_font=font,
         )
 
-        return image
+        result = image.copy()
+        result.paste(number_layer, mask=number_layer)
+        return result
 
     run_operation_and_compare(
         original_file=datadir / "squares_unnumbered.png",
@@ -120,16 +130,21 @@ def test_number_font_from_file(datadir: Path) -> None:
 
 def test_compute_square_numbering() -> None:
     """Test that compute_square_numbering computes the proper positions and numbers."""
-    from pixelgrid.operations import Position, SquareNumber, compute_square_numbering
+    from pixelgrid.operations import (
+        Position,
+        Square,
+        SquareNumber,
+        compute_square_numbering,
+    )
 
-    squares: list[Position] = []
+    squares: list[Square] = []
 
     assert not list(compute_square_numbering(squares))
 
     squares = [
-        Position(0, 0),
-        Position(0, 50),
-        Position(50, 0),
+        Square(Position(0, 0), 50),
+        Square(Position(0, 50), 50),
+        Square(Position(50, 0), 50),
     ]
 
     assert list(compute_square_numbering(squares)) == [

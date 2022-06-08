@@ -1,7 +1,7 @@
 """Module with image manipulation operations."""
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Iterator, Literal, NamedTuple, Sequence
+from typing import Iterable, Iterator, Literal, NamedTuple
 
 from PIL import Image, ImageChops, ImageDraw
 
@@ -46,40 +46,46 @@ def scale10x(image: Image.Image) -> Image.Image:
     return image.resize(new_size, resample=resampling)
 
 
-def check_pixels_in_square(
-    image: Image.Image, origin: Position, square_size: int
-) -> bool:
+@dataclass
+class Square:
+    """Represent a single square."""
+
+    position: Position
+    size: int
+
+
+def check_pixels_in_square(image: Image.Image, square: Square) -> bool:
     """Check if there are any opaque pixels in a given square."""
-    transparent = Image.new("RGBA", (square_size, square_size), color=(0, 0, 0, 0))
-    box_end = origin.translate(Delta(square_size - 1, square_size - 1))
-    square = image.crop((*origin, *box_end))
-    diff = ImageChops.difference(transparent, square)
+    transparent = Image.new("RGBA", (square.size, square.size), color=(0, 0, 0, 0))
+    box_end = square.position.translate(Delta(square.size - 1, square.size - 1))
+    square_image = image.crop((*square.position, *box_end))
+    diff = ImageChops.difference(transparent, square_image)
     return bool(diff.getbbox())
 
 
 def get_squares_with_pixels(
     image: Image.Image,
     square_size: int,
-) -> Iterator[Position]:
+) -> Iterator[Square]:
     """Yield every square where there is at least one fully opaque pixel."""
     for y in range(0, image.height, square_size):
         for x in range(0, image.width, square_size):
             square_corner = Position(x, y)
-            if check_pixels_in_square(image, square_corner, square_size):
-                yield square_corner
+            if check_pixels_in_square(image, Square(square_corner, square_size)):
+                yield Square(square_corner, square_size)
 
 
 def draw_squares_on_image(
     image: Image.Image,
-    squares: Iterable[Position],
-    square_size: int,
+    squares: Iterable[Square],
 ) -> None:
     """Draw a given collection of squares on an image."""
     drawer = ImageDraw.Draw(image)
 
-    for x, y in squares:
+    for square in squares:
+        x, y = square.position
         drawer.rectangle(
-            ((x, y), (x + square_size, y + square_size)),
+            ((x, y), (x + square.size, y + square.size)),
             outline=(0, 0, 0),
             width=1,
         )
@@ -94,27 +100,24 @@ class SquareNumber:
 
 
 def compute_square_numbering(
-    squares: Sequence[Position],
+    squares: Iterable[Square],
 ) -> Iterator[SquareNumber]:
     """Compute where to draw the numbers of a sequence of squares."""
 
-    for number, square_position in enumerate(squares):
+    for number, square in enumerate(squares):
         yield SquareNumber(
-            position=square_position.translate(Delta(2, 2)),
+            position=square.position.translate(Delta(2, 2)),
             value=number,
         )
 
 
-def draw_squares_if_pixels(image: Image.Image) -> Image.Image:
-    """Draw 50x50 squares wherever there are pixels in the original image."""
-    square_size = 50
+def get_square_layer(image: Image.Image, squares: Iterable[Square]) -> Image.Image:
+    """Get an image with the squares given the pixels of another."""
+    squares_image = Image.new(mode="RGBA", size=image.size)
 
-    squares = get_squares_with_pixels(image, square_size)
-    result = image.copy()
+    draw_squares_on_image(squares_image, squares)
 
-    draw_squares_on_image(result, squares, square_size)
-
-    return result
+    return squares_image
 
 
 @dataclass
@@ -178,19 +181,23 @@ def draw_number(
         )
 
 
-def draw_square_numbering_on_image(
+def get_number_layer(
     image: Image.Image,
     numbers: Iterable[SquareNumber],
     number_font: NumberFont,
-) -> None:
-    """Draw a given collection of squares on an image."""
+) -> Image.Image:
+    """Get a layer with the square numbering drawn onto it."""
+    number_layer = Image.new(mode="RGBA", size=image.size)
+
     for number in numbers:
         position = number.position
 
         draw_number(
-            image,
+            number_layer,
             number.value,
             position,
             1,
             number_font,
         )
+
+    return number_layer
