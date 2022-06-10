@@ -1,23 +1,9 @@
 """Tests for pixelgrid.operations."""
 from pathlib import Path
-from typing import Callable
 
-from PIL import Image, ImageChops
+from PIL import Image
 
-
-def run_operation_and_compare(
-    original_file: Path,
-    expected_file: Path,
-    operation: Callable[[Image.Image], Image.Image],
-) -> None:
-    """Run an operation on an image and check if the result is as expected."""
-    with Image.open(original_file) as im:
-        processed = operation(im)
-
-    with Image.open(expected_file) as expected:
-        diff = ImageChops.difference(processed, expected)
-
-    assert not diff.getbbox()
+from .helpers import run_operation_and_compare
 
 
 def test_scale_10x_scales_10x(datadir: Path) -> None:

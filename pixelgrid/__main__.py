@@ -1,39 +1,32 @@
 """Main module."""
+from contextlib import ExitStack
 from pathlib import Path
+from typing import List
 
 import typer
 from PIL import Image
 
-from .operations import (
-    NumberFont,
-    compute_square_numbering,
-    get_number_layer,
-    get_square_layer,
-    get_squares_with_pixels,
-    scale10x,
-)
+from .composition import compose_steps
+from .operations import NumberFont
 
 APP = typer.Typer()
 
 
 @APP.command()
-def main(image: Path, numbers_path: Path, output: Path = Path("output.png")) -> None:
+def main(
+    layers: List[Path], numbers_path: Path, output: Path = Path("output.png")
+) -> None:
     """Generate pixel art diagrams."""
+    number_font = NumberFont.from_file(numbers_path)
 
-    with Image.open(image) as im:
-        number_font = NumberFont.from_file(numbers_path)
+    with ExitStack() as ex:
+        images = [ex.enter_context(Image.open(layer)) for layer in layers]
 
-        resized = scale10x(im)
+        outputs = compose_steps(images, number_font)
 
-        squares = list(get_squares_with_pixels(resized, 50))
-
-        numbers = compute_square_numbering(squares)
-        square_layer = get_square_layer(resized, squares)
-        number_layer = get_number_layer(resized, numbers, number_font)
-
-        resized.paste(square_layer, mask=square_layer)
-        resized.paste(number_layer, mask=number_layer)
-        resized.save(output)
+        for i, im in enumerate(outputs):
+            directory = output.parent
+            im.save(directory / f"{output.stem}-{i}{output.suffix}")
 
 
 APP()
