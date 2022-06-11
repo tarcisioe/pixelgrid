@@ -1,5 +1,5 @@
 """Functions that compose images into diagrams."""
-from typing import NamedTuple
+from typing import Iterable, NamedTuple
 
 from PIL import Image, ImageDraw
 
@@ -73,6 +73,60 @@ def change_alpha_of_nontransparent(image: Image.Image) -> Image.Image:
     return result
 
 
+def alpha_composite(images: Iterable[Image.Image]) -> Image.Image:
+    """Create the alpha-composition of a collection of images.
+
+    Same as "merge visible layers" in image editors.
+
+    Args:
+        images: The list of images to composite.
+
+    Returns:
+        The final merged image.
+    """
+    background, *layers = images
+
+    result = background.copy()
+
+    for layer in layers:
+        result.alpha_composite(layer)
+
+    return result
+
+
+def create_diagram(
+    background: Image.Image,
+    new_layer: Image.Image,
+    grid: Image.Image,
+    already_drawn: list[Image.Image],
+    number_font: NumberFont,
+) -> Image.Image:
+    """Create a single diagram.
+
+    Args:
+        background: The background image.
+        new_layer: The layer being added to the image.
+        grid: The pixel grid.
+        already_drawn: The layers that were already drawn.
+        number_font: The font to use for writing numbers on squares.
+    """
+    squares = list(get_squares_with_pixels(new_layer, 50))
+    numbers = compute_square_numbering(squares)
+    square_layer = get_square_layer(new_layer, squares)
+    number_layer = get_number_layer(new_layer, numbers, number_font)
+
+    return alpha_composite(
+        [
+            background,
+            *already_drawn,
+            new_layer,
+            square_layer,
+            number_layer,
+            grid,
+        ]
+    )
+
+
 def compose_steps(
     images: list[Image.Image], number_font: NumberFont
 ) -> list[Image.Image]:
@@ -101,23 +155,9 @@ def compose_steps(
     outputs: list[Image.Image] = []
 
     for image in layers:
-        squares = list(get_squares_with_pixels(image, 50))
-        numbers = compute_square_numbering(squares)
-        square_layer = get_square_layer(image, squares)
-        number_layer = get_number_layer(image, numbers, number_font)
-
-        result = background.convert("RGBA")
-
-        for previous in already_drawn:
-            result.alpha_composite(previous)
-
-        result.paste(image, mask=image)
-
-        result.paste(square_layer, mask=square_layer)
-        result.paste(number_layer, mask=number_layer)
-
-        result.alpha_composite(grid)
+        outputs.append(
+            create_diagram(background, image, grid, already_drawn, number_font)
+        )
         already_drawn.append(change_alpha_of_nontransparent(image))
-        outputs.append(result)
 
     return outputs

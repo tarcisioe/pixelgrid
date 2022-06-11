@@ -8,8 +8,21 @@ from PIL import Image, ImageChops
 
 def assert_images_equal(image1: Image.Image, image2: Image.Image) -> None:
     """Assert that two images are the same."""
-    diff = ImageChops.difference(image1, image2)
-    assert not diff.getbbox()
+    equal_size = image1.height == image2.height and image1.width == image2.width
+
+    image1 = image1.convert("RGBA")
+    image2 = image2.convert("RGBA")
+
+    alpha_1 = image1.getchannel("A")
+    alpha_2 = image2.getchannel("A")
+
+    equal_alphas = not ImageChops.difference(alpha_1, alpha_2).getbbox()
+
+    equal_content = not ImageChops.difference(
+        image1.convert("RGB"), image2.convert("RGB")
+    ).getbbox()
+
+    assert equal_size and equal_alphas and equal_content
 
 
 def run_operation_and_compare_list(
