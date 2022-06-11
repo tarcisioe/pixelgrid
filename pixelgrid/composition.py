@@ -147,7 +147,7 @@ def compose_steps(
         size=Size(*background.size),
         pitch=Size(10, 10),
         width=1,
-        color=RGBAColor(0, 0, 0, 128),
+        color=RGBAColor(0, 0, 0, 50),
     )
 
     already_drawn: list[Image.Image] = []
