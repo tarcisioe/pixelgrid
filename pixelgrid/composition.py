@@ -115,10 +115,23 @@ def create_diagram(
     square_layer = get_square_layer(new_layer, squares)
     number_layer = get_number_layer(new_layer, numbers, number_font)
 
-    return alpha_composite(
+    white_background = Image.new(
+        mode="RGBA",
+        size=background.size,
+        color=RGBAColor(255, 255, 255, 255),
+    )
+
+    previous_steps_background = alpha_composite(
         [
             background,
             *already_drawn,
+        ]
+    )
+
+    return alpha_composite(
+        [
+            white_background,
+            change_alpha_of_nontransparent(previous_steps_background),
             new_layer,
             square_layer,
             number_layer,
@@ -158,6 +171,6 @@ def compose_steps(
         outputs.append(
             create_diagram(background, image, grid, already_drawn, number_font)
         )
-        already_drawn.append(change_alpha_of_nontransparent(image))
+        already_drawn.append(image)
 
     return outputs
